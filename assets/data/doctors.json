@@ -1,0 +1,57 @@
+[
+  {
+    "id": "1",
+    "name": "Dr. Nethmi Dissanayake",
+    "specialty": "Dermatologist",
+    "clinic": "City Health Clinic",
+    "experience": "10+ Years",
+    "consultationFee": "LKR 3,000",
+    "photoUrl": "https://randomuser.me/api/portraits/women/44.jpg",
+    "bio": "Specialist in skin conditions, cosmetic dermatology, and laser treatments with over a decade of experience.",
+    "rating": 4.8
+  },
+  {
+    "id": "2",
+    "name": "Dr. Mohamed Fazir",
+    "specialty": "Physiotherapist",
+    "clinic": "Colombo Care Center",
+    "experience": "8+ Years",
+    "consultationFee": "LKR 2,500",
+    "photoUrl": "https://randomuser.me/api/portraits/men/32.jpg",
+    "bio": "Expert in sports injuries, post-surgical rehabilitation, and musculoskeletal disorders.",
+    "rating": 4.6
+  },
+  {
+    "id": "3",
+    "name": "Dr. Nimal Perera",
+    "specialty": "Cardiologist",
+    "clinic": "Heart Clinic",
+    "experience": "15+ Years",
+    "consultationFee": "LKR 4,000",
+    "photoUrl": "https://randomuser.me/api/portraits/men/75.jpg",
+    "bio": "Leading cardiologist specialising in heart disease prevention, diagnosis, and treatment.",
+    "rating": 4.9
+  },
+  {
+    "id": "4",
+    "name": "Dr. Priya Wijesinghe",
+    "specialty": "Paediatrician",
+    "clinic": "Children's Health Center",
+    "experience": "12+ Years",
+    "consultationFee": "LKR 3,500",
+    "photoUrl": "https://randomuser.me/api/portraits/women/65.jpg",
+    "bio": "Dedicated to child health, development, and preventive care from infancy through adolescence.",
+    "rating": 4.7
+  },
+  {
+    "id": "5",
+    "name": "Dr. Kasun Fernando",
+    "specialty": "General Physician",
+    "clinic": "MediSlot Clinic",
+    "experience": "6+ Years",
+    "consultationFee": "LKR 1,800",
+    "photoUrl": "https://randomuser.me/api/portraits/men/12.jpg",
+    "bio": "Primary care physician handling all general health concerns, check-ups, and referrals.",
+    "rating": 4.4
+  }
+]
