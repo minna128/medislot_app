@@ -1,11 +1,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
 
-// Studied topic: saving data with Flutter (SharedPreferences)
-// Simple local auth — saves login state on the device.
-// No Firebase yet (not studied). Firebase can be added later.
 class AuthService {
-  // Save login state after user registers or logs in
+
   Future<void> saveLoginState({
     required String name,
     required String email,
@@ -16,27 +13,43 @@ class AuthService {
     await prefs.setString(AppConstants.prefUserEmail, email);
   }
 
-  // Check if user is already logged in (app restart)
+  // Just locks the screen — keeps email saved so fingerprint still works
+  Future<void> lockSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(AppConstants.prefIsLoggedIn, false);
+  }
+
+  // Full sign out — clears everything including email
+  Future<void> signOut() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+  }
+
+  // Check if session is active
   Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(AppConstants.prefIsLoggedIn) ?? false;
   }
 
-  // Get saved user name
+  // Check if user has ever logged in (email is saved)
+  Future<bool> hasAccount() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString(AppConstants.prefUserEmail) ?? '';
+    return email.isNotEmpty;
+  }
+
   Future<String> getUserName() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(AppConstants.prefUserName) ?? 'User';
   }
 
-  // Get saved user email
   Future<String> getUserEmail() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(AppConstants.prefUserEmail) ?? '';
   }
 
-  // Clear all saved data on logout
+  // Keep old logout name pointing to lockSession for compatibility
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    await lockSession();
   }
 }

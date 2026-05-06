@@ -9,6 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Sensors
+  local_auth: ^2.1.8              # Fingerprint login
+  speech_to_text: ^7.0.0        # Voice input for search
+  flutter_local_notifications: ^17.2.2  # Appointment reminders
 
   # ── Data / Storage (studied: saving data, reading JSON) ───────────────
   shared_preferences: ^2.2.3     # Save login state + user data locally
@@ -37,6 +41,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+
 
 flutter:
   uses-material-design: true
