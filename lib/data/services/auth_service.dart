@@ -1,41 +1,105 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
 
 class AuthService {
 
-  Future<void> saveLoginState({
+  // ── API Login ──────────────────────────────────────────────────────────────
+  Future<Map<String, dynamic>> login(String email, String password) async {
+    final response = await http.post(
+      Uri.parse('${AppConstants.baseUrl}/api/login'),
+      headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      body: jsonEncode({'email': email, 'password': password}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      await _saveSession(
+        token: data['token'],
+        name:  data['user']['name'],
+        email: data['user']['email'],
+        role:  data['user']['role'],
+      );
+      return {'success': true};
+    } else {
+      return {'success': false, 'message': data['message'] ?? 'Login failed'};
+    }
+  }
+
+  // ── API Register ───────────────────────────────────────────────────────────
+  Future<Map<String, dynamic>> register(String name, String email, String password) async {
+    final response = await http.post(
+      Uri.parse('${AppConstants.baseUrl}/api/register'),
+      headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      body: jsonEncode({
+        'name':                  name,
+        'email':                 email,
+        'password':              password,
+        'password_confirmation': password,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 201) {
+      await _saveSession(
+        token: data['token'],
+        name:  data['user']['name'],
+        email: data['user']['email'],
+        role:  data['user']['role'],
+      );
+      return {'success': true};
+    } else {
+      return {'success': false, 'message': data['message'] ?? 'Registration failed'};
+    }
+  }
+
+  // ── API Logout ─────────────────────────────────────────────────────────────
+  Future<void> logout() async {
+    final token = await getToken();
+    if (token != null) {
+      await http.post(
+        Uri.parse('${AppConstants.baseUrl}/api/logout'),
+        headers: {
+          'Content-Type':  'application/json',
+          'Accept':        'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+    }
+    await signOut();
+  }
+
+  // ── Session Helpers ────────────────────────────────────────────────────────
+  Future<void> _saveSession({
+    required String token,
     required String name,
     required String email,
+    required String role,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(AppConstants.prefIsLoggedIn, true);
-    await prefs.setString(AppConstants.prefUserName, name);
-    await prefs.setString(AppConstants.prefUserEmail, email);
+    await prefs.setString(AppConstants.prefApiToken,   token);
+    await prefs.setString(AppConstants.prefUserName,   name);
+    await prefs.setString(AppConstants.prefUserEmail,  email);
+    await prefs.setString(AppConstants.prefUserRole,   role);
   }
 
-  // Just locks the screen — keeps email saved so fingerprint still works
-  Future<void> lockSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(AppConstants.prefIsLoggedIn, false);
-  }
-
-  // Full sign out — clears everything including email
   Future<void> signOut() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
   }
 
-  // Check if session is active
   Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(AppConstants.prefIsLoggedIn) ?? false;
   }
 
-  // Check if user has ever logged in (email is saved)
-  Future<bool> hasAccount() async {
+  Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    final email = prefs.getString(AppConstants.prefUserEmail) ?? '';
-    return email.isNotEmpty;
+    return prefs.getString(AppConstants.prefApiToken);
   }
 
   Future<String> getUserName() async {
@@ -48,8 +112,8 @@ class AuthService {
     return prefs.getString(AppConstants.prefUserEmail) ?? '';
   }
 
-  // Keep old logout name pointing to lockSession for compatibility
-  Future<void> logout() async {
-    await lockSession();
+  Future<String> getUserRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(AppConstants.prefUserRole) ?? 'patient';
   }
 }

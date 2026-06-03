@@ -5,6 +5,7 @@ import '../../data/services/biometric_service.dart';
 import '../main_tabs.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -22,7 +23,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   void initState() {
     super.initState();
     _checkBiometrics();
-    _debugCheckLogin();
   }
 
   Future<void> _checkBiometrics() async {
@@ -31,21 +31,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     setState(() => _biometricAvailable = available);
   }
 
-  Future<void> _debugCheckLogin() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
-    final email = prefs.getString('user_email') ?? 'none';
-    final name = prefs.getString('user_name') ?? 'none';
-    print('=== DEBUG ===');
-    print('isLoggedIn: $isLoggedIn');
-    print('email: $email');
-    print('name: $name');
-  }
-
   Future<void> _biometricLogin() async {
-    // Check if user has ever logged in before (email is saved)
-    final hasAccount = await _authService.hasAccount();
-    if (!hasAccount) {
+    final token = await _authService.getToken();
+    if (token == null || token.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -58,11 +46,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     if (!mounted) return;
 
     if (authenticated) {
-      // Re-activate the session
-      final name = await _authService.getUserName();
-      final email = await _authService.getUserEmail();
-      await _authService.saveLoginState(name: name, email: email);
-
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_logged_in', true);
       if (!mounted) return;
       Navigator.pushReplacement(context,
           MaterialPageRoute(builder: (_) => const MainTabs()));
@@ -76,96 +61,200 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
     return Scaffold(
-      backgroundColor: cs.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 40),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Hero background image (same as Laravel website)
+          Image.network(
+            'https://images.unsplash.com/photo-1504439468489-c8920d796a29?w=1200&q=80',
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(color: const Color(0xFF050A1E)),
+          ),
 
-              Container(
-                  width: 100, height: 100,
-                  decoration: BoxDecoration(
-                      color: cs.primary.withOpacity(0.1),
-                      shape: BoxShape.circle),
-                  child: Icon(Icons.local_hospital_rounded,
-                      size: 56, color: cs.primary)),
+          // Dark overlay (same gradient as Laravel)
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xE6050A1E),
+                  Color(0xCC050A1E),
+                  Color(0xF5050A1E),
+                ],
+              ),
+            ),
+          ),
 
-              const SizedBox(height: 24),
+          // Content
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 48),
 
-              Text('MediSlot',
-                  style: TextStyle(fontFamily: 'Poppins',
-                      fontSize: 28, fontWeight: FontWeight.bold,
-                      color: cs.onBackground)),
+                  // Logo � teal box with heartbeat icon (matches website)
+                  SvgPicture.asset('assets/images/logo.svg', width: 72, height: 72),
 
-              const SizedBox(height: 8),
+                  const SizedBox(height: 20),
 
-              Text('Book clinic appointments easily\nfrom your phone.',
-                  style: TextStyle(fontFamily: 'Poppins', fontSize: 14,
-                      color: cs.onBackground.withOpacity(0.5), height: 1.5),
-                  textAlign: TextAlign.center),
+                  // Brand name
+                  RichText(
+                    text: const TextSpan(
+                      style: TextStyle(
+                          fontFamily: 'Poppins', fontSize: 32,
+                          fontWeight: FontWeight.bold),
+                      children: [
+                        TextSpan(text: 'Medi',
+                            style: TextStyle(color: Colors.white)),
+                        TextSpan(text: 'Slot',
+                            style: TextStyle(color: Color(0xFF2DD4BF))),
+                      ],
+                    ),
+                  ),
 
-              const SizedBox(height: 56),
+                  const SizedBox(height: 12),
 
-              ElevatedButton(
-                  onPressed: () => Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const LoginScreen())),
-                  child: const Text('Login with Email')),
+                  // Trusted badge (matches website)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0x262DD4BF),
+                      border: Border.all(color: const Color(0x4D2DD4BF)),
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 7, height: 7,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF2DD4BF),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text('Trusted by 1,000+ Patients',
+                            style: TextStyle(
+                                fontFamily: 'Poppins', fontSize: 13,
+                                color: Color(0xFF2DD4BF),
+                                fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                  ),
 
-              const SizedBox(height: 12),
+                  const SizedBox(height: 32),
 
-              OutlinedButton(
-                  onPressed: () => Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const RegisterScreen())),
-                  child: const Text('Create Account')),
+                  // Headline
+                  const Text('Better Doctors.',
+                      style: TextStyle(
+                          fontFamily: 'Poppins', fontSize: 28,
+                          fontWeight: FontWeight.bold, color: Colors.white)),
+                  const Text('Better Care.',
+                      style: TextStyle(
+                          fontFamily: 'Poppins', fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2DD4BF))),
 
-              if (_biometricAvailable) ...[
-                const SizedBox(height: 24),
+                  const SizedBox(height: 16),
 
-                Row(children: [
-                  Expanded(child: Divider(
-                      color: cs.onBackground.withOpacity(0.15))),
-                  Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('or',
-                          style: TextStyle(fontFamily: 'Poppins', fontSize: 13,
-                              color: cs.onBackground.withOpacity(0.4)))),
-                  Expanded(child: Divider(
-                      color: cs.onBackground.withOpacity(0.15))),
-                ]),
+                  const Text(
+                    'Book appointments with certified specialists online � fast, easy, and secure.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontFamily: 'Poppins', fontSize: 14,
+                        color: Colors.white70, height: 1.6),
+                  ),
 
-                const SizedBox(height: 24),
+                  const SizedBox(height: 48),
 
-                GestureDetector(
-                  onTap: _biometricLogin,
-                  child: Column(children: [
-                    Container(
-                        width: 64, height: 64,
-                        decoration: BoxDecoration(
-                            color: cs.primary.withOpacity(0.1),
+                  // Login button (teal � matches "Book Now")
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => LoginScreen())),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0D9488),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        textStyle: const TextStyle(
+                            fontFamily: 'Poppins', fontSize: 16,
+                            fontWeight: FontWeight.w600),
+                      ),
+                      child: const Text('Login'),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Register button (outlined � matches "Log In" outline)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => RegisterScreen())),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white54),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        textStyle: const TextStyle(
+                            fontFamily: 'Poppins', fontSize: 16,
+                            fontWeight: FontWeight.w600),
+                      ),
+                      child: const Text('Create Account'),
+                    ),
+                  ),
+
+                  if (_biometricAvailable) ...[
+                    const SizedBox(height: 32),
+                    Row(children: [
+                      Expanded(child: Divider(color: Colors.white.withOpacity(0.2))),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('or', style: TextStyle(
+                            fontFamily: 'Poppins', fontSize: 13,
+                            color: Colors.white54)),
+                      ),
+                      Expanded(child: Divider(color: Colors.white.withOpacity(0.2))),
+                    ]),
+                    const SizedBox(height: 24),
+                    GestureDetector(
+                      onTap: _biometricLogin,
+                      child: Column(children: [
+                        Container(
+                          width: 64, height: 64,
+                          decoration: BoxDecoration(
+                            color: const Color(0x262DD4BF),
                             shape: BoxShape.circle,
                             border: Border.all(
-                                color: cs.primary.withOpacity(0.3), width: 1.5)),
-                        child: Icon(Icons.fingerprint,
-                            size: 36, color: cs.primary)),
-                    const SizedBox(height: 8),
-                    Text('Login with Fingerprint',
-                        style: TextStyle(fontFamily: 'Poppins',
-                            fontSize: 13, fontWeight: FontWeight.w500,
-                            color: cs.primary)),
-                  ]),
-                ),
-              ],
+                                color: const Color(0x4D2DD4BF), width: 1.5),
+                          ),
+                          child: const Icon(Icons.fingerprint,
+                              size: 36, color: Color(0xFF2DD4BF)),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text('Login with Fingerprint',
+                            style: TextStyle(fontFamily: 'Poppins',
+                                fontSize: 13, fontWeight: FontWeight.w500,
+                                color: Color(0xFF2DD4BF))),
+                      ]),
+                    ),
+                  ],
 
-              const SizedBox(height: 32),
-            ],
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -23,7 +23,7 @@ class Doctor {
     required this.rating,
   });
 
-  // Parse from JSON map — used when reading from local file or API
+  // Parse from local JSON file
   factory Doctor.fromJson(Map<String, dynamic> json) {
     return Doctor(
       id:              json['id'].toString(),
@@ -35,6 +35,21 @@ class Doctor {
       photoUrl:        json['photoUrl'] ?? '',
       bio:             json['bio'] ?? '',
       rating:          (json['rating'] as num?)?.toDouble() ?? 4.5,
+    );
+  }
+
+  // Parse from Laravel API response (different field names)
+  factory Doctor.fromApiJson(Map<String, dynamic> json) {
+    return Doctor(
+      id:              json['id'].toString(),
+      name:            json['name'] ?? '',
+      specialty:       json['specialization'] ?? '',
+      clinic:          json['clinic_location'] ?? '',
+      experience:      '',
+      consultationFee: '',
+      photoUrl:        '',
+      bio:             json['availability'] ?? '',
+      rating:          4.5,
     );
   }
 

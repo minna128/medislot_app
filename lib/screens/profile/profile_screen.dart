@@ -13,6 +13,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _authService = AuthService();
   String _name = '';
   String _email = '';
+  String _role = '';
 
   @override
   void initState() {
@@ -21,31 +22,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
-    final name = await _authService.getUserName();
+    final name  = await _authService.getUserName();
     final email = await _authService.getUserEmail();
+    final role  = await _authService.getUserRole();
     if (!mounted) return;
     setState(() {
-      _name = name;
+      _name  = name;
       _email = email;
+      _role  = role;
     });
   }
 
-  Future<void> _lockSession() async {
-    await _authService.lockSession();
-    if (!mounted) return;
-    Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-            (route) => false);
-  }
-
   Future<void> _signOut() async {
-    await _authService.signOut();
+    await _authService.logout();
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-            (route) => false);
+        (route) => false);
   }
 
   @override
@@ -62,7 +56,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             const SizedBox(height: 16),
 
-            // Avatar
             Container(
                 width: 100, height: 100,
                 decoration: BoxDecoration(
@@ -78,10 +71,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Text(_email,
                 style: TextStyle(fontFamily: 'Poppins',
                     color: cs.onBackground.withOpacity(0.5))),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                  color: cs.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20)),
+              child: Text(_role.toUpperCase(),
+                  style: TextStyle(fontFamily: 'Poppins',
+                      fontSize: 11, fontWeight: FontWeight.w600,
+                      color: cs.primary)),
+            ),
 
             const SizedBox(height: 32),
 
-            // Profile info card
             Card(
               child: Column(children: [
                 _ProfileTile(icon: Icons.person_outline,
@@ -89,12 +92,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const Divider(height: 1, indent: 56),
                 _ProfileTile(icon: Icons.email_outlined,
                     label: 'Email', value: _email),
+                const Divider(height: 1, indent: 56),
+                _ProfileTile(icon: Icons.badge_outlined,
+                    label: 'Role', value: _role),
               ]),
             ),
 
             const SizedBox(height: 16),
 
-            // Settings card
             Card(
               child: Column(children: [
                 ListTile(
@@ -117,9 +122,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 32),
 
-            // Lock button — keeps account, fingerprint can unlock
             OutlinedButton.icon(
-              onPressed: _lockSession,
+              onPressed: _signOut,
               icon: const Icon(Icons.logout),
               label: const Text('Logout',
                   style: TextStyle(fontFamily: 'Poppins')),

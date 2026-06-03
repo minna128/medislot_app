@@ -171,7 +171,7 @@ class _AppointmentTile extends StatelessWidget {
 
   Color _statusColor() {
     switch (appointment.status) {
-      case AppointmentStatus.upcoming:  return AppColors.primaryBlue;
+      case AppointmentStatus.upcoming:  return AppColors.primary;
       case AppointmentStatus.completed: return AppColors.success;
       case AppointmentStatus.cancelled: return AppColors.error;
     }
@@ -179,9 +179,9 @@ class _AppointmentTile extends StatelessWidget {
 
   Color _statusBg() {
     switch (appointment.status) {
-      case AppointmentStatus.upcoming:  return AppColors.primaryBluePale;
-      case AppointmentStatus.completed: return AppColors.successBg;
-      case AppointmentStatus.cancelled: return AppColors.errorBg;
+      case AppointmentStatus.upcoming:  return Color(0xFFCCFBF1);
+      case AppointmentStatus.completed: return Color(0xFFE8F5E9);
+      case AppointmentStatus.cancelled: return Color(0xFFFFEBEE);
     }
   }
 
