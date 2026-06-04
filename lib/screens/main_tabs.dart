@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'home/home_screen.dart';
-import 'doctors/doctors_screen.dart';
-import 'appointments/appointments_screen.dart';
-import 'profile/profile_screen.dart';
+import 'package:medislot/screens/home/home_screen.dart';
+import 'package:medislot/screens/doctors/doctors_screen.dart';
+import 'package:medislot/screens/appointments/appointments_screen.dart';
+import 'package:medislot/screens/profile/profile_screen.dart';
 
 // Studied topic: Tabs in Flutter
 class MainTabs extends StatefulWidget {
@@ -33,7 +33,7 @@ class _MainTabsState extends State<MainTabs> {
           color: cs.surface,
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.06),
+                color: Colors.black.withValues(alpha: 0.06),
                 blurRadius: 20,
                 offset: const Offset(0, -4)),
           ],
@@ -111,14 +111,14 @@ class _NavItem extends StatelessWidget {
               width: 48, height: 36,
               decoration: BoxDecoration(
                   color: isSelected
-                      ? cs.primary.withOpacity(0.12)
+                      ? cs.primary.withValues(alpha: 0.12)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(12)),
               child: Icon(
                   isSelected ? activeIcon : icon,
                   color: isSelected
                       ? cs.primary
-                      : cs.onSurface.withOpacity(0.4),
+                      : cs.onSurface.withValues(alpha: 0.4),
                   size: 22),
             ),
             const SizedBox(height: 2),
@@ -131,7 +131,7 @@ class _NavItem extends StatelessWidget {
                         : FontWeight.normal,
                     color: isSelected
                         ? cs.primary
-                        : cs.onSurface.withOpacity(0.4))),
+                        : cs.onSurface.withValues(alpha: 0.4))),
           ],
         ),
       ),
