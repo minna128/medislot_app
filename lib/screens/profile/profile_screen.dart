@@ -1,50 +1,15 @@
 import 'package:flutter/material.dart';
-import '../../data/services/auth_service.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../auth/welcome_screen.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
-
-  @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  final _authService = AuthService();
-  String _name = '';
-  String _email = '';
-  String _role = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadProfile();
-  }
-
-  Future<void> _loadProfile() async {
-    final name  = await _authService.getUserName();
-    final email = await _authService.getUserEmail();
-    final role  = await _authService.getUserRole();
-    if (!mounted) return;
-    setState(() {
-      _name  = name;
-      _email = email;
-      _role  = role;
-    });
-  }
-
-  Future<void> _signOut() async {
-    await _authService.logout();
-    if (!mounted) return;
-    Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-        (route) => false);
-  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final auth = context.watch<AuthProvider>();
 
     return Scaffold(
       appBar: AppBar(
@@ -64,20 +29,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Icon(Icons.person, size: 52, color: cs.primary)),
             const SizedBox(height: 16),
 
-            Text(_name,
+            Text(auth.userName,
                 style: Theme.of(context).textTheme.titleLarge
                     ?.copyWith(fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
             const SizedBox(height: 4),
-            Text(_email,
+            Text(auth.userEmail,
                 style: TextStyle(fontFamily: 'Poppins',
-                    color: cs.onBackground.withOpacity(0.5))),
+                    color: cs.onSurface.withOpacity(0.5))),
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                   color: cs.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20)),
-              child: Text(_role.toUpperCase(),
+              child: Text(auth.userRole.toUpperCase(),
                   style: TextStyle(fontFamily: 'Poppins',
                       fontSize: 11, fontWeight: FontWeight.w600,
                       color: cs.primary)),
@@ -88,13 +53,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Card(
               child: Column(children: [
                 _ProfileTile(icon: Icons.person_outline,
-                    label: 'Full Name', value: _name),
+                    label: 'Full Name', value: auth.userName),
                 const Divider(height: 1, indent: 56),
                 _ProfileTile(icon: Icons.email_outlined,
-                    label: 'Email', value: _email),
+                    label: 'Email', value: auth.userEmail),
                 const Divider(height: 1, indent: 56),
                 _ProfileTile(icon: Icons.badge_outlined,
-                    label: 'Role', value: _role),
+                    label: 'Role', value: auth.userRole),
               ]),
             ),
 
@@ -123,7 +88,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 32),
 
             OutlinedButton.icon(
-              onPressed: _signOut,
+              onPressed: () async {
+                await context.read<AuthProvider>().logout();
+                if (!context.mounted) return;
+                Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                        (route) => false);
+              },
               icon: const Icon(Icons.logout),
               label: const Text('Logout',
                   style: TextStyle(fontFamily: 'Poppins')),

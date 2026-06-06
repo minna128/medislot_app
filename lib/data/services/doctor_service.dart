@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -63,7 +63,7 @@ class DoctorService {
   // Read from local JSON asset (offline fallback)
   Future<List<Doctor>> _loadFromLocalJson() async {
     final String jsonString =
-        await rootBundle.loadString(AppConstants.localDoctorsJson);
+    await rootBundle.loadString(AppConstants.localDoctorsJson);
     final List<dynamic> jsonList = json.decode(jsonString);
     return jsonList.map((j) => Doctor.fromJson(j)).toList();
   }

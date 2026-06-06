@@ -13,7 +13,9 @@ class DoctorsScreen extends StatefulWidget {
 
 class _DoctorsScreenState extends State<DoctorsScreen> {
   final _doctorService = DoctorService();
+  final _searchController = TextEditingController();
   List<Doctor> _doctors = [];
+  List<Doctor> _filtered = [];
   bool _isLoading = true;
   String? _error;
 
@@ -21,6 +23,23 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   void initState() {
     super.initState();
     _loadDoctors();
+    _searchController.addListener(_onSearch);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearch() {
+    final q = _searchController.text.toLowerCase();
+    setState(() {
+      _filtered = _doctors.where((d) =>
+      d.name.toLowerCase().contains(q) ||
+          d.specialty.toLowerCase().contains(q) ||
+          d.clinic.toLowerCase().contains(q)).toList();
+    });
   }
 
   Future<void> _loadDoctors() async {
@@ -29,6 +48,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
       if (!mounted) return;
       setState(() {
         _doctors = doctors;
+        _filtered = doctors;
         _isLoading = false;
       });
     } catch (e) {
@@ -51,6 +71,50 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
             style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
         backgroundColor: cs.background,
         elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Container(
+              height: 46,
+              decoration: BoxDecoration(
+                  color: cs.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: cs.onBackground.withOpacity(0.08))),
+              child: Row(children: [
+                const SizedBox(width: 12),
+                Icon(Icons.search, color: cs.onBackground.withOpacity(0.4), size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    style: TextStyle(fontFamily: 'Poppins', fontSize: 14,
+                        color: cs.onSurface),
+                    decoration: InputDecoration(
+                      hintText: 'Search doctor, specialty, clinic...',
+                      hintStyle: TextStyle(fontFamily: 'Poppins', fontSize: 14,
+                          color: cs.onBackground.withOpacity(0.4)),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                if (_searchController.text.isNotEmpty)
+                  GestureDetector(
+                    onTap: () {
+                      _searchController.clear();
+                      _onSearch();
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Icon(Icons.close, size: 18,
+                          color: cs.onBackground.withOpacity(0.4)),
+                    ),
+                  ),
+              ]),
+            ),
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -69,14 +133,28 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                 },
                 child: const Text('Retry')),
           ]))
+          : _filtered.isEmpty
+          ? Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 48,
+                color: cs.onBackground.withOpacity(0.3)),
+            const SizedBox(height: 12),
+            Text('No doctors found',
+                style: TextStyle(fontFamily: 'Poppins',
+                    color: cs.onBackground.withOpacity(0.5))),
+          ],
+        ),
+      )
           : RefreshIndicator(
         onRefresh: _loadDoctors,
         child: ListView.separated(
-          padding: const EdgeInsets.all(20),
-          itemCount: _doctors.length,
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
+          itemCount: _filtered.length,
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) =>
-              _DoctorCard(doctor: _doctors[index]),
+              _DoctorCard(doctor: _filtered[index]),
         ),
       ),
     );
@@ -102,7 +180,6 @@ class _DoctorCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: cs.onBackground.withOpacity(0.07))),
         child: Row(children: [
-          // Doctor photo
           ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: CachedNetworkImage(
@@ -120,8 +197,6 @@ class _DoctorCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12)),
                       child: Icon(Icons.person, color: cs.primary, size: 36)))),
           const SizedBox(width: 14),
-
-          // Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,8 +221,7 @@ class _DoctorCard extends StatelessWidget {
                         color: cs.onSurface.withOpacity(0.5))),
                 const SizedBox(height: 4),
                 Row(children: [
-                  const Icon(Icons.star_rounded,
-                      size: 14, color: Colors.amber),
+                  const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
                   const SizedBox(width: 4),
                   Text(doctor.rating.toStringAsFixed(1),
                       style: const TextStyle(fontFamily: 'Poppins',
@@ -160,9 +234,7 @@ class _DoctorCard extends StatelessWidget {
               ],
             ),
           ),
-
-          Icon(Icons.chevron_right,
-              color: cs.onSurface.withOpacity(0.3)),
+          Icon(Icons.chevron_right, color: cs.onSurface.withOpacity(0.3)),
         ]),
       ),
     );

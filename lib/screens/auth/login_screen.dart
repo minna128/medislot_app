@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/services/auth_service.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../main_tabs.dart';
 import 'register_screen.dart';
 
@@ -14,7 +16,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = AuthService();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -29,9 +30,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() { _isLoading = true; _errorMessage = null; });
 
-    final result = await _authService.login(
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final result = await context.read<AuthProvider>().login(
       _emailController.text.trim(),
       _passwordController.text,
     );
@@ -42,10 +47,13 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const MainTabs()),
-        (route) => false,
+            (route) => false,
       );
     } else {
-      setState(() { _isLoading = false; _errorMessage = result['message']; });
+      setState(() {
+        _isLoading = false;
+        _errorMessage = result['message'];
+      });
     }
   }
 

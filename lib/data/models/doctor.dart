@@ -11,6 +11,7 @@ class Doctor {
   final String bio;
   final double rating;
 
+
   const Doctor({
     required this.id,
     required this.name,
@@ -21,6 +22,8 @@ class Doctor {
     required this.photoUrl,
     required this.bio,
     required this.rating,
+
+
   });
 
   // Parse from local JSON file
@@ -48,7 +51,7 @@ factory Doctor.fromApiJson(Map<String, dynamic> json) {
     return Doctor(
       id:              json['id'].toString(),
       name:            'Dr. ${json['name'] ?? ''}',
-      specialty:       json['specialization'] ?? '',
+      specialty: json['specialization'] ?? '',
       clinic:          json['clinic_location'] ?? '',
       experience:      json['availability'] ?? '',
       consultationFee: '',

@@ -1,10 +1,12 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../data/models/appointment.dart';
 import '../../data/models/doctor.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/database_service.dart';
-import '../../data/services/doctor_service.dart';
+import '../../providers/doctor_provider.dart';
 import '../doctors/doctor_detail_screen.dart';
+import '../doctors/doctors_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -16,9 +18,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _db = DatabaseService();
   final _auth = AuthService();
-  final _doctorService = DoctorService();
   List<Appointment> _appointments = [];
-  List<Doctor> _doctors = [];
   String _userName = 'User';
   bool _isLoading = true;
 
@@ -27,12 +27,15 @@ class _HomeScreenState extends State<HomeScreen> {
     {'label': 'Neurology',   'icon': Icons.psychology_rounded,        'color': Color(0xFF7E57C2), 'filter': 'Neurologist'},
     {'label': 'Orthopedic',  'icon': Icons.accessibility_new_rounded, 'color': Color(0xFF26A69A), 'filter': 'Orthopedic'},
     {'label': 'Dermatology', 'icon': Icons.spa_rounded,               'color': Color(0xFFEC407A), 'filter': 'Dermatologist'},
-    {'label': 'Paediatrics', 'icon': Icons.child_care_rounded,        'color': Color(0xFF42A5F5), 'filter': 'Paediatrician'},
+    {'label': 'Pediatrics', 'icon': Icons.child_care_rounded,        'color': Color(0xFF42A5F5), 'filter': 'Pediatrician'},
     {'label': 'General',     'icon': Icons.medical_services_rounded,  'color': Color(0xFF26C6DA), 'filter': 'General Practitioner'},
   ];
 
   @override
-  void initState() { super.initState(); _loadData(); }
+  void initState() {
+    super.initState();
+    _loadData();
+  }
 
   String _today() {
     final now = DateTime.now();
@@ -42,14 +45,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadData() async {
-    final appts   = await _db.getAllAppointments();
-    final name    = await _auth.getUserName();
-    final doctors = await _doctorService.getDoctors();
-    if (!mounted) return;
+    final appts = await _db.getAllAppointments();
+    final name  = await _auth.getUserName();
+    // Load doctors via DoctorProvider — shared state across screens
+    await context.read<DoctorProvider>().loadDoctors(force: true);    if (!mounted) return;
     setState(() {
       _appointments = appts;
       _userName     = name;
-      _doctors      = doctors;
       _isLoading    = false;
     });
   }
@@ -63,65 +65,127 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showServiceDoctors(Map<String, dynamic> service) {
-    final filter = service['filter'] as String;
-    final filtered = _doctors.where((d) => d.specialty == filter).toList();
-    final color = service['color'] as Color;
+    final filter   = service['filter'] as String;
+    final doctors  = context.read<DoctorProvider>().doctors;
+    final filtered = doctors.where((d) => d.specialty == filter).toList();
+    final color    = service['color'] as Color;
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 12),
-          Container(width: 40, height: 4,
-              decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 16),
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(service['icon'] as IconData, color: color, size: 20),
-            const SizedBox(width: 8),
-            Text(service['label'] as String,
-                style: TextStyle(fontFamily: 'Poppins', fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurface)),
-          ]),
-          const SizedBox(height: 8),
-          if (filtered.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Text('No doctors available',
-                  style: TextStyle(fontFamily: 'Poppins',
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
-            )
-          else
-            ...filtered.map((d) => ListTile(
-              leading: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(
-                    imageUrl: d.photoUrl, width: 44, height: 44, fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => Container(
-                        width: 44, height: 44,
-                        decoration: BoxDecoration(color: color.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8)),
-                        child: Icon(Icons.person, color: color, size: 24))),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(width: 40, height: 4,
+                  decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 16),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(service['icon'] as IconData, color: color, size: 20),
+                const SizedBox(width: 8),
+                Text(service['label'] as String,
+                    style: TextStyle(fontFamily: 'Poppins', fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface)),
+              ]),
+              const SizedBox(height: 8),
+              if (filtered.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text('No doctors available',
+                      style: TextStyle(fontFamily: 'Poppins',
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
+                )
+              else
+                ...filtered.map((d) => ListTile(
+                  leading: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                        imageUrl: d.photoUrl, width: 44, height: 44, fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => Container(
+                            width: 44, height: 44,
+                            decoration: BoxDecoration(color: color.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8)),
+                            child: Icon(Icons.person, color: color, size: 24))),
+                  ),
+                  title: Text(d.name, style: const TextStyle(fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w600, fontSize: 14)),
+                  subtitle: Text(d.clinic, style: const TextStyle(fontFamily: 'Poppins',
+                      fontSize: 12)),
+                  trailing: Icon(Icons.arrow_forward_ios, size: 14,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => DoctorDetailScreen(doctor: d)));
+                  },
+                )),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAllServices() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('All Services', style: TextStyle(
+                  fontFamily: 'Poppins', fontSize: 16,
+                  fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              GridView.count(
+                crossAxisCount: 3,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                children: _services.map((s) => GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showServiceDoctors(s);
+                  },
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                          width: 56, height: 56,
+                          decoration: BoxDecoration(
+                              color: (s['color'] as Color).withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(16)),
+                          child: Icon(s['icon'] as IconData,
+                              color: s['color'] as Color, size: 26)),
+                      const SizedBox(height: 6),
+                      Text(s['label'] as String,
+                          style: TextStyle(fontFamily: 'Poppins', fontSize: 11,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                          textAlign: TextAlign.center),
+                    ],
+                  ),
+                )).toList(),
               ),
-              title: Text(d.name, style: const TextStyle(fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600, fontSize: 14)),
-              subtitle: Text(d.clinic, style: const TextStyle(fontFamily: 'Poppins',
-                  fontSize: 12)),
-              trailing: Icon(Icons.arrow_forward_ios, size: 14,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => DoctorDetailScreen(doctor: d)));
-              },
-            )),
-          const SizedBox(height: 20),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -129,6 +193,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    // Watch DoctorProvider — rebuilds when doctors load
+    final doctorProvider = context.watch<DoctorProvider>();
     final upcoming = _appointments
         .where((a) => a.status == AppointmentStatus.upcoming).toList();
 
@@ -173,7 +239,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   color: Colors.white70)),
                         ]),
                         ElevatedButton.icon(
-                          onPressed: () {},
+                          onPressed: () => Navigator.push(context,
+                              MaterialPageRoute(builder: (_) => const DoctorsScreen())),
                           icon: const Icon(Icons.calendar_month_outlined, size: 16),
                           label: const Text('Book Appointment',
                               style: TextStyle(fontFamily: 'Poppins', fontSize: 12,
@@ -217,27 +284,31 @@ class _HomeScreenState extends State<HomeScreen> {
               // Search bar
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Container(
-                  height: 50,
-                  decoration: BoxDecoration(
-                      color: cs.surface,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: cs.onBackground.withOpacity(0.08))),
-                  child: Row(children: [
-                    const SizedBox(width: 14),
-                    Icon(Icons.search, color: cs.onBackground.withOpacity(0.4), size: 20),
-                    const SizedBox(width: 10),
-                    Text('Search doctor, clinic...',
-                        style: TextStyle(fontFamily: 'Poppins', fontSize: 14,
-                            color: cs.onBackground.withOpacity(0.4))),
-                    const Spacer(),
-                    Container(
-                        margin: const EdgeInsets.all(8),
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                            color: cs.primary, borderRadius: BorderRadius.circular(8)),
-                        child: const Icon(Icons.tune_rounded, color: Colors.white, size: 16)),
-                  ]),
+                child: GestureDetector(
+                  onTap: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const DoctorsScreen())),
+                  child: Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                        color: cs.surface,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: cs.onBackground.withOpacity(0.08))),
+                    child: Row(children: [
+                      const SizedBox(width: 14),
+                      Icon(Icons.search, color: cs.onBackground.withOpacity(0.4), size: 20),
+                      const SizedBox(width: 10),
+                      Text('Search doctor, clinic...',
+                          style: TextStyle(fontFamily: 'Poppins', fontSize: 14,
+                              color: cs.onBackground.withOpacity(0.4))),
+                      const Spacer(),
+                      Container(
+                          margin: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                              color: cs.primary, borderRadius: BorderRadius.circular(8)),
+                          child: const Icon(Icons.tune_rounded, color: Colors.white, size: 16)),
+                    ]),
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -250,8 +321,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text('Services', style: TextStyle(fontFamily: 'Poppins',
                         fontSize: 17, fontWeight: FontWeight.bold, color: cs.onBackground)),
-                    Text('see all', style: TextStyle(fontFamily: 'Poppins',
-                        fontSize: 13, color: cs.primary, fontWeight: FontWeight.w500)),
+                    GestureDetector(
+                      onTap: _showAllServices,
+                      child: Text('see all', style: TextStyle(fontFamily: 'Poppins',
+                          fontSize: 13, color: cs.primary, fontWeight: FontWeight.w500)),
+                    ),
                   ],
                 ),
               ),
@@ -307,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 24),
               ],
 
-              // Top Doctors
+              // Top Doctors — from DoctorProvider
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
@@ -315,20 +389,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text('Top Doctors', style: TextStyle(fontFamily: 'Poppins',
                         fontSize: 17, fontWeight: FontWeight.bold, color: cs.onBackground)),
-                    Text('see all', style: TextStyle(fontFamily: 'Poppins',
-                        fontSize: 13, color: cs.primary, fontWeight: FontWeight.w500)),
+                    GestureDetector(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => const DoctorsScreen())),
+                      child: Text('see all', style: TextStyle(fontFamily: 'Poppins',
+                          fontSize: 13, color: cs.primary, fontWeight: FontWeight.w500)),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 14),
-              _isLoading
+              doctorProvider.isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: _doctors.length,
-                  itemBuilder: (ctx, i) => _DoctorTile(doctor: _doctors[i])),
+                  itemCount: doctorProvider.topDoctors.length,
+                  itemBuilder: (ctx, i) =>
+                      _DoctorTile(doctor: doctorProvider.topDoctors[i])),
               const SizedBox(height: 24),
             ]),
           ),
