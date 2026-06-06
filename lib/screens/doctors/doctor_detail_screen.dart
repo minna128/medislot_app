@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../data/models/doctor.dart';
 import '../booking/booking_screen.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DoctorDetailScreen extends StatefulWidget {
   final Doctor doctor;
@@ -12,6 +14,85 @@ class DoctorDetailScreen extends StatefulWidget {
 }
 
 class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
+  Future<void> _openInMaps() async {
+    final coords = _findCoords(widget.doctor.clinic);
+
+    if (coords == null) return;
+    final lat = coords[0];
+    final lng = coords[1];
+    final label = Uri.encodeComponent(widget.doctor.clinic);
+    final uri = Uri.parse(
+        'https://www.google.com/maps/search/?api=1&query=$lat,$lng&query_place_id=$label');
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+  String _distanceText = '';
+
+// Clinic coordinates map
+  static const Map<String, List<double>> _clinicCoords = {
+    'Heart Care Clinic':    [7.2906, 80.6337],   // Kandy
+    'Kids Health Clinic':   [6.0535, 80.2210],   // Galle
+    'Neuro Care Center':    [6.9271, 79.8612],   // Colombo
+    'Skin Wellness Clinic': [6.0535, 80.2210],   // Galle
+    'MediSlot Main Clinic': [6.9271, 79.8612],   // Colombo
+    'MediSlot Clinic':      [7.2906, 80.6337],   // Kandy
+    'Block A':              [7.2810, 80.6380],   // Kandy
+    'Block B':              [7.2820, 80.6390],   // Kandy
+  };
+
+  List<double>? _findCoords(String clinicName) {
+    // Exact match first
+    if (_clinicCoords.containsKey(clinicName)) return _clinicCoords[clinicName];
+    // Partial match — find the most specific key
+    String? bestKey;
+    int bestLen = 0;
+    for (final key in _clinicCoords.keys) {
+      if (clinicName.contains(key) && key.length > bestLen) {
+        bestKey = key;
+        bestLen = key.length;
+      }
+    }
+    return bestKey != null ? _clinicCoords[bestKey] : null;
+  }
+
+  Future<void> _getDistance() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setState(() => _distanceText = 'Location off');
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() => _distanceText = 'Permission denied');
+          return;
+        }
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low)
+          .timeout(const Duration(seconds: 10));
+
+      final coords = _findCoords(widget.doctor.clinic);
+
+      if (coords == null) {
+        setState(() => _distanceText = '');
+        return;
+      }
+
+      final distance = Geolocator.distanceBetween(
+          position.latitude, position.longitude,
+          coords[0], coords[1]);
+
+      final km = (distance / 1000).toStringAsFixed(1);
+      setState(() => _distanceText = '$km km from you');
+    } catch (e) {
+      setState(() => _distanceText = '');
+    }
+  }
+
   String? _selectedSlot;
 
   static const List<String> _timeSlots = [
@@ -19,6 +100,12 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     '11:00 AM', '11:30 AM', '02:00 PM', '02:30 PM',
     '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _getDistance();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -139,15 +226,35 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  Row(children: [
-                    const Icon(Icons.location_on_outlined,
-                        size: 16, color: Color(0xFF0D9488)),
-                    const SizedBox(width: 6),
-                    Flexible(child: Text(
-                        doctor.clinic.isNotEmpty ? doctor.clinic : 'MediSlot Clinic',
-                        style: TextStyle(fontFamily: 'Poppins', fontSize: 13,
-                            color: textColor.withOpacity(0.7)))),
-                  ]),
+                  GestureDetector(
+                    onTap: () async {
+                      print('Tapped clinic!');
+                      await _openInMaps();
+                    },
+                    child: Row(children: [
+                      const Icon(Icons.location_on_outlined,
+                          size: 16, color: Color(0xFF0D9488)),
+                      const SizedBox(width: 6),
+                      Flexible(child: Text(
+                          doctor.clinic.isNotEmpty ? doctor.clinic : 'MediSlot Clinic',
+                          style: const TextStyle(fontFamily: 'Poppins', fontSize: 13,
+                              color: Color(0xFF0D9488),
+                              decoration: TextDecoration.underline))),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.open_in_new_rounded, size: 12, color: Color(0xFF0D9488)),
+                    ]),
+                  ),
+                  if (_distanceText.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      const Icon(Icons.near_me_outlined,
+                          size: 14, color: Color(0xFF0D9488)),
+                      const SizedBox(width: 6),
+                      Text(_distanceText,
+                          style: const TextStyle(fontFamily: 'Poppins', fontSize: 12,
+                              color: Color(0xFF0D9488), fontWeight: FontWeight.w500)),
+                    ]),
+                  ],
                   const SizedBox(height: 6),
                   Row(children: [
                     const Icon(Icons.access_time_outlined,
