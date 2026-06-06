@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Studied topic: State Management with Provider
 // AuthProvider manages authentication state across the entire app

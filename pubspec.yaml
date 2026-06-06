@@ -12,6 +12,7 @@ dependencies:
   # Sensors
   local_auth: ^2.1.8
   flutter_local_notifications: ^17.2.2
+  timezone: ^0.9.4
 
   # Data / Storage
   shared_preferences: ^2.2.3

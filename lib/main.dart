@@ -1,14 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tz;
 import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/doctor_provider.dart';
 import 'screens/auth/welcome_screen.dart';
 import 'screens/main_tabs.dart';
 
-void main() {
+// Global notifications plugin instance
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+FlutterLocalNotificationsPlugin();
+
+// Initialize timezone
+void initTimezone() {
+  tz.initializeTimeZones();
+}
+
+Future<void> initNotifications() async {
+  const AndroidInitializationSettings androidSettings =
+  AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  const InitializationSettings initSettings =
+  InitializationSettings(android: androidSettings);
+
+  await flutterLocalNotificationsPlugin.initialize(initSettings);
+
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+      ?.requestNotificationsPermission();
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  tz.initializeTimeZones();
+  await initNotifications();
+
   runApp(
-    // MultiProvider wraps the whole app so any screen can access these providers
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
@@ -50,7 +78,6 @@ class _AppStartupState extends State<AppStartup> {
   }
 
   Future<void> _checkLogin() async {
-    // Load user data into AuthProvider on startup
     await context.read<AuthProvider>().loadUser();
     if (!mounted) return;
     final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
@@ -80,4 +107,3 @@ class _AppStartupState extends State<AppStartup> {
     );
   }
 }
-

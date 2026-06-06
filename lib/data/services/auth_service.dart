@@ -89,7 +89,17 @@ class AuthService {
 
   Future<void> signOut() async {
     final prefs = await SharedPreferences.getInstance();
+    // Keep token for biometric login but mark as logged out
+    final token = prefs.getString(AppConstants.prefApiToken);
+    final name = prefs.getString(AppConstants.prefUserName);
+    final email = prefs.getString(AppConstants.prefUserEmail);
+    final role = prefs.getString(AppConstants.prefUserRole);
     await prefs.clear();
+    // Restore token and user info for biometric
+    if (token != null) await prefs.setString(AppConstants.prefApiToken, token);
+    if (name != null) await prefs.setString(AppConstants.prefUserName, name);
+    if (email != null) await prefs.setString(AppConstants.prefUserEmail, email);
+    if (role != null) await prefs.setString(AppConstants.prefUserRole, role);
   }
 
   Future<bool> isLoggedIn() async {

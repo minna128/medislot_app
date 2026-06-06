@@ -2,6 +2,7 @@
 import '../../data/models/appointment.dart';
 import '../../data/models/doctor.dart';
 import '../../data/services/database_service.dart';
+import '../../data/services/notification_service.dart';
 
 class BookingScreen extends StatefulWidget {
   final Doctor doctor;
@@ -80,6 +81,14 @@ class _BookingScreenState extends State<BookingScreen> {
     );
 
     await _dbService.insertAppointment(appointment);
+
+// Send booking confirmation notification
+    await NotificationService().showBookingConfirmation(
+      doctorName: widget.doctor.name,
+      date: _formattedDate,
+      time: widget.timeSlot,
+    );
+
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(

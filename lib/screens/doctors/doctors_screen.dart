@@ -18,6 +18,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   List<Doctor> _filtered = [];
   bool _isLoading = true;
   String? _error;
+  bool _useExternalJson = false;
 
   @override
   void initState() {
@@ -43,8 +44,11 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   }
 
   Future<void> _loadDoctors() async {
+    setState(() { _isLoading = true; _error = null; });
     try {
-      final doctors = await _doctorService.getDoctors();
+      final doctors = _useExternalJson
+          ? await _doctorService.fetchFromExternalJson()
+          : await _doctorService.getDoctors();
       if (!mounted) return;
       setState(() {
         _doctors = doctors;
@@ -60,6 +64,16 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     }
   }
 
+  void _toggleSource() {
+    setState(() => _useExternalJson = !_useExternalJson);
+    _loadDoctors();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(_useExternalJson
+          ? 'Loading from GitHub JSON...'
+          : 'Loading from Laravel API...')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -71,6 +85,19 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
             style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
         backgroundColor: cs.background,
         elevation: 0,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: TextButton.icon(
+              onPressed: _toggleSource,
+              icon: Icon(
+                  _useExternalJson ? Icons.cloud_outlined : Icons.storage_outlined,
+                  size: 16),
+              label: Text(_useExternalJson ? 'GitHub JSON' : 'API',
+                  style: const TextStyle(fontFamily: 'Poppins', fontSize: 11)),
+            ),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(60),
           child: Padding(
