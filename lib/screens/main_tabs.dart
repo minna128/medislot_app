@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:medislot/screens/home/home_screen.dart';
 import 'package:medislot/screens/doctors/doctors_screen.dart';
 import 'package:medislot/screens/appointments/appointments_screen.dart';
 import 'package:medislot/screens/profile/profile_screen.dart';
 
-// Studied topic: Tabs in Flutter
+// Studied topic: Tabs in Flutter, Network Connectivity
 class MainTabs extends StatefulWidget {
   const MainTabs({super.key});
 
@@ -14,6 +15,7 @@ class MainTabs extends StatefulWidget {
 
 class _MainTabsState extends State<MainTabs> {
   int _currentIndex = 0;
+  bool _isOnline = true;
 
   final List<Widget> _screens = const [
     HomeScreen(),
@@ -23,11 +25,62 @@ class _MainTabsState extends State<MainTabs> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _checkConnectivity();
+    Connectivity().onConnectivityChanged.listen((results) {
+      if (!mounted) return;
+      setState(() {
+        _isOnline = results.any((r) =>
+        r == ConnectivityResult.wifi ||
+            r == ConnectivityResult.mobile ||
+            r == ConnectivityResult.ethernet);
+      });
+    });
+  }
+
+  Future<void> _checkConnectivity() async {
+    final results = await Connectivity().checkConnectivity();
+    if (!mounted) return;
+    setState(() {
+      _isOnline = results.any((r) =>
+      r == ConnectivityResult.wifi ||
+          r == ConnectivityResult.mobile ||
+          r == ConnectivityResult.ethernet);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: Column(
+        children: [
+          if (!_isOnline)
+            SafeArea(
+              bottom: false,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                color: Colors.red.shade700,
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.wifi_off_rounded, color: Colors.white, size: 14),
+                    SizedBox(width: 6),
+                    Text('No internet — showing offline data',
+                        style: TextStyle(fontFamily: 'Poppins',
+                            fontSize: 12, color: Colors.white)),
+                  ],
+                ),
+              ),
+            ),
+          Expanded(
+            child: _screens[_currentIndex],
+          ),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: cs.surface,
