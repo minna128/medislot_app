@@ -6,7 +6,7 @@ class AppConstants {
 
   // External JSON URL (scrollable list requirement — reads from real hosted JSON)
   static const String externalDoctorsUrl =
-      'https://raw.githubusercontent.com/minna128/medislot_app/main/assets/data/doctors.json';
+      'https://raw.githubusercontent.com/minna128/medislot_app/main/assets/doctors.json';
 
   // Local JSON asset path (offline fallback)
   static const String localDoctorsJson = 'assets/data/doctors.json';
