@@ -7,6 +7,9 @@ import 'login_screen.dart';
 import 'register_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+// WelcomeScreen is the FIRST screen the user sees when they open the app
+// It has 3 ways to access the app: Email Login, Create Account, Fingerprint
+// The design matches the Laravel website - same colors, logo, background image
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -15,24 +18,42 @@ class WelcomeScreen extends StatefulWidget {
 }
 
 class _WelcomeScreenState extends State<WelcomeScreen> {
+  // AuthService handles all API calls - login, logout, getting saved user data
   final _authService = AuthService();
+
+  // BiometricService handles fingerprint sensor using the local_auth package
   final _biometricService = BiometricService();
+
+  // This variable controls whether the fingerprint button shows or not
+  // If the phone does not support fingerprint, this stays false and button is hidden
   bool _biometricAvailable = false;
 
+  // initState runs ONCE when the screen is first created
+  // We use it to check if fingerprint is available on this device
   @override
   void initState() {
     super.initState();
     _checkBiometrics();
   }
 
+  // This method asks the local_auth package if the phone has a fingerprint sensor
+  // If yes, _biometricAvailable becomes true and the fingerprint button appears
   Future<void> _checkBiometrics() async {
     final available = await _biometricService.isBiometricAvailable();
-    if (!mounted) return;
+    if (!mounted) return; // Safety check - don't update if screen is closed
     setState(() => _biometricAvailable = available);
   }
 
+  // This method handles the fingerprint login process
+  // It only works if the user has logged in with email at least once before
+  // Because we need a saved Sanctum token to restore their session
   Future<void> _biometricLogin() async {
+
+    // Step 1: Check if a Sanctum token is saved from a previous email login
+    // The token is stored in SharedPreferences after email login
     final token = await _authService.getToken();
+
+    // If no token found, show a message asking user to login with email first
     if (token == null || token.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -42,16 +63,22 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       return;
     }
 
+    // Step 2: Ask the user to scan their fingerprint
+    // This uses the local_auth package which is a mobile device sensor capability
     final authenticated = await _biometricService.authenticate();
     if (!mounted) return;
 
     if (authenticated) {
+      // Step 3: Fingerprint matched successfully
+      // Mark the user as logged in in SharedPreferences
+      // Then navigate to the main app (MainTabs)
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('is_logged_in', true);
       if (!mounted) return;
       Navigator.pushReplacement(context,
           MaterialPageRoute(builder: (_) => const MainTabs()));
     } else {
+      // Fingerprint scan failed - show error message
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('Fingerprint not recognised. Try again.'),
@@ -63,31 +90,41 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
+        // Stack allows us to place widgets on top of each other
+        // Layer 1 (bottom): background image
+        // Layer 2 (middle): dark overlay
+        // Layer 3 (top): all the text and buttons
         fit: StackFit.expand,
         children: [
-          // Hero background image (same as Laravel website)
+
+          // LAYER 1: Background image loaded from the internet
+          // This is the same medical equipment photo used on the Laravel website
+          // errorBuilder shows a dark background if the image fails to load
           Image.network(
             'https://images.unsplash.com/photo-1504439468489-c8920d796a29?w=1200&q=80',
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => Container(color: const Color(0xFF050A1E)),
           ),
 
-          // Dark overlay (same gradient as Laravel)
+          // LAYER 2: Dark gradient overlay on top of the background image
+          // Without this, the white text would be hard to read over the bright image
+          // The gradient goes from dark at top to very dark at bottom
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xE6050A1E),
-                  Color(0xCC050A1E),
-                  Color(0xF5050A1E),
+                  Color(0xE6050A1E), // Dark navy at top
+                  Color(0xCC050A1E), // Slightly lighter in middle
+                  Color(0xF5050A1E), // Very dark at bottom
                 ],
               ),
             ),
           ),
 
-          // Content
+          // LAYER 3: Main content - logo, text, and buttons
+          // SafeArea makes sure content doesn't overlap with phone's status bar
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -96,12 +133,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 children: [
                   const SizedBox(height: 48),
 
-                  // Logo � teal box with heartbeat icon (matches website)
+                  // App logo - SVG file extracted from the Laravel project's public folder
+                  // flutter_svg package is used to render SVG files in Flutter
                   SvgPicture.asset('assets/images/logo.svg', width: 72, height: 72),
 
                   const SizedBox(height: 20),
 
-                  // Brand name
+                  // App name using RichText so we can have two different colors
+                  // "Medi" in white and "Slot" in teal - matches the Laravel website
                   RichText(
                     text: const TextSpan(
                       style: TextStyle(
@@ -118,7 +157,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
                   const SizedBox(height: 12),
 
-                  // Trusted badge (matches website)
+                  // Trust badge - shows "Trusted by 1,000+ Patients"
+                  // Matches the badge shown on the Laravel welcome page
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
@@ -129,6 +169,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Small green circle dot on the left
                         Container(
                           width: 7, height: 7,
                           decoration: const BoxDecoration(
@@ -148,11 +189,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
                   const SizedBox(height: 32),
 
-                  // Headline
+                  // Main headline - matches the Laravel website text
+                  // "Better Doctors." in white
                   const Text('Better Doctors.',
                       style: TextStyle(
                           fontFamily: 'Poppins', fontSize: 28,
                           fontWeight: FontWeight.bold, color: Colors.white)),
+                  // "Better Care." in teal - accent color
                   const Text('Better Care.',
                       style: TextStyle(
                           fontFamily: 'Poppins', fontSize: 28,
@@ -161,8 +204,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
                   const SizedBox(height: 16),
 
+                  // Subtitle text explaining the app
                   const Text(
-                    'Book appointments with certified specialists online � fast, easy, and secure.',
+                    'Book appointments with certified specialists online — fast, easy, and secure.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                         fontFamily: 'Poppins', fontSize: 14,
@@ -171,7 +215,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
                   const SizedBox(height: 48),
 
-                  // Login button (teal � matches "Book Now")
+                  // LOGIN BUTTON - teal background
+                  // Navigates to LoginScreen when tapped
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -193,7 +238,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
                   const SizedBox(height: 12),
 
-                  // Register button (outlined � matches "Log In" outline)
+                  // CREATE ACCOUNT BUTTON - outlined style
+                  // Navigates to RegisterScreen when tapped
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -213,8 +259,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     ),
                   ),
 
+                  // FINGERPRINT SECTION
+                  // Only shows if _biometricAvailable is true
+                  // This means the phone supports fingerprint login
                   if (_biometricAvailable) ...[
                     const SizedBox(height: 32),
+
+                    // "or" divider line
                     Row(children: [
                       Expanded(child: Divider(color: Colors.white.withOpacity(0.2))),
                       const Padding(
@@ -226,9 +277,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       Expanded(child: Divider(color: Colors.white.withOpacity(0.2))),
                     ]),
                     const SizedBox(height: 24),
+
+                    // Fingerprint button - calls _biometricLogin when tapped
+                    // Uses the fingerprint sensor (mobile device capability)
                     GestureDetector(
                       onTap: _biometricLogin,
                       child: Column(children: [
+                        // Circular container with fingerprint icon
                         Container(
                           width: 64, height: 64,
                           decoration: BoxDecoration(

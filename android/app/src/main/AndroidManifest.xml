@@ -1,21 +1,31 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-feature
-        android:name="android.hardware.camera"
-        android:required="false" />
+    <!-- PERMISSIONS — these tell Android what hardware/features the app needs access to -->
 
+    <!-- Required to make API calls to the Laravel backend and load images from internet -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Required by connectivity_plus to check if device is online or offline -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+    <!-- Required by geolocator to get the device's GPS location (precise) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+
+    <!-- Required by geolocator to get approximate location (used as fallback) -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.CAMERA"/>
+
+    <!-- Required by local_auth to use fingerprint sensor for biometric login -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
-    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+
+    <!-- Required by flutter_local_notifications to show notifications on Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- Required to schedule exact alarm notifications (30 min appointment reminder) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+
+    <!-- Required by flutter_local_notifications to vibrate when notification arrives -->
     <uses-permission android:name="android.permission.VIBRATE"/>
 
     <application
@@ -34,6 +44,7 @@
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme"/>
+            <!-- This makes MediSlot appear in the app launcher -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -44,6 +55,7 @@
             android:value="2"/>
     </application>
 
+    <!-- Required by url_launcher to open Google Maps from the app -->
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />

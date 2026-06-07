@@ -5,7 +5,10 @@ import 'package:medislot/screens/doctors/doctors_screen.dart';
 import 'package:medislot/screens/appointments/appointments_screen.dart';
 import 'package:medislot/screens/profile/profile_screen.dart';
 
-// Studied topic: Tabs in Flutter, Network Connectivity
+// MainTabs is the main navigation screen of the app
+// It contains the 4 bottom navigation tabs and the offline banner
+// It also demonstrates the network connectivity mobile device capability
+// using the connectivity_plus package
 class MainTabs extends StatefulWidget {
   const MainTabs({super.key});
 
@@ -14,23 +17,33 @@ class MainTabs extends StatefulWidget {
 }
 
 class _MainTabsState extends State<MainTabs> {
+  // Tracks which tab is currently selected — 0=Home, 1=Schedule, 2=Saved, 3=Profile
   int _currentIndex = 0;
+
+  // Tracks whether the device has internet connection
+  // Used to show or hide the offline red banner
   bool _isOnline = true;
 
+  // The 4 screens for each bottom navigation tab
   final List<Widget> _screens = const [
-    HomeScreen(),
-    DoctorsScreen(),
-    AppointmentsScreen(),
-    ProfileScreen(),
+    HomeScreen(),        // Tab 0 — Home
+    DoctorsScreen(),     // Tab 1 — Schedule (Doctors List)
+    AppointmentsScreen(),// Tab 2 — Saved (Appointments)
+    ProfileScreen(),     // Tab 3 — Profile
   ];
 
   @override
   void initState() {
     super.initState();
-    _checkConnectivity();
+    _checkConnectivity(); // Check internet connection on app start
+
+    // Listen for network changes in real time using connectivity_plus
+    // This fires whenever the device connects or disconnects from internet
+    // In v6 of connectivity_plus, the result is a List not a single value
     Connectivity().onConnectivityChanged.listen((results) {
       if (!mounted) return;
       setState(() {
+        // Check if any connection type is active (wifi, mobile data or ethernet)
         _isOnline = results.any((r) =>
         r == ConnectivityResult.wifi ||
             r == ConnectivityResult.mobile ||
@@ -39,6 +52,7 @@ class _MainTabsState extends State<MainTabs> {
     });
   }
 
+  // _checkConnectivity checks the current connection status when the app starts
   Future<void> _checkConnectivity() async {
     final results = await Connectivity().checkConnectivity();
     if (!mounted) return;
@@ -57,6 +71,9 @@ class _MainTabsState extends State<MainTabs> {
     return Scaffold(
       body: Column(
         children: [
+          // OFFLINE BANNER — only shows when there is no internet connection
+          // When offline, the app automatically uses local JSON for doctors data
+          // This satisfies the requirement: "network connectivity information"
           if (!_isOnline)
             SafeArea(
               bottom: false,
@@ -76,11 +93,15 @@ class _MainTabsState extends State<MainTabs> {
                 ),
               ),
             ),
+
+          // The currently selected screen fills the rest of the space
           Expanded(
             child: _screens[_currentIndex],
           ),
         ],
       ),
+
+      // BOTTOM NAVIGATION BAR — custom built with 4 tabs
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: cs.surface,
@@ -130,13 +151,15 @@ class _MainTabsState extends State<MainTabs> {
   }
 }
 
+// _NavItem is a single tab button in the bottom navigation bar
+// It shows a different icon and color when selected vs unselected
 class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
-  final int index;
-  final int currentIndex;
-  final void Function(int) onTap;
+  final IconData icon;       // Icon when not selected
+  final IconData activeIcon; // Icon when selected (filled version)
+  final String label;        // Text label below the icon
+  final int index;           // This tab's index
+  final int currentIndex;    // The currently active tab index
+  final void Function(int) onTap; // Called when this tab is tapped
 
   const _NavItem({
     required this.icon,
@@ -149,32 +172,34 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isSelected = index == currentIndex;
+    final cs         = Theme.of(context).colorScheme;
+    final isSelected = index == currentIndex; // True if this is the active tab
 
     return GestureDetector(
       onTap: () => onTap(index),
-      behavior: HitTestBehavior.opaque,
+      behavior: HitTestBehavior.opaque, // Makes the whole area tappable
       child: SizedBox(
         width: 72,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Icon container — teal background when selected, transparent when not
             Container(
               width: 48, height: 36,
               decoration: BoxDecoration(
                   color: isSelected
-                      ? cs.primary.withValues(alpha: 0.12)
+                      ? cs.primary.withValues(alpha: 0.12) // Light teal highlight
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(12)),
               child: Icon(
-                  isSelected ? activeIcon : icon,
+                  isSelected ? activeIcon : icon, // Filled icon when selected
                   color: isSelected
-                      ? cs.primary
-                      : cs.onSurface.withValues(alpha: 0.4),
+                      ? cs.primary                          // Teal when selected
+                      : cs.onSurface.withValues(alpha: 0.4), // Grey when not
                   size: 22),
             ),
             const SizedBox(height: 2),
+            // Tab label — bold and teal when selected
             Text(label,
                 style: TextStyle(
                     fontFamily: 'Poppins',

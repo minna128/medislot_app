@@ -2,50 +2,64 @@ import 'package:flutter/material.dart';
 import '../data/models/doctor.dart';
 import '../data/services/doctor_service.dart';
 
-// Studied topic: State Management with Provider
-// DoctorProvider manages the doctors list state across the app
-// Both HomeScreen and DoctorsScreen share the same data without reloading
+// DoctorProvider is the second Provider in the app (AuthProvider is the first)
+// It manages the doctors list and shares it between HomeScreen and DoctorsScreen
+// Without Provider, both screens would separately call the API and load doctors twice
+// With Provider, doctors are loaded ONCE and both screens read from the same list
+// This is a key benefit of state management — avoiding duplicate API calls
 class DoctorProvider extends ChangeNotifier {
+  // DoctorService handles all the data fetching (API, external JSON, local JSON)
   final DoctorService _doctorService = DoctorService();
 
-  List<Doctor> _doctors = [];
-  bool _isLoading = false;
-  String _error = '';
-  bool _loaded = false;
+  // Private variables storing the current state
+  List<Doctor> _doctors = []; // The full list of doctors
+  bool _isLoading = false;    // True while doctors are being loaded
+  String _error = '';          // Stores error message if loading fails
+  bool _loaded = false;        // Tracks if doctors have been loaded already
 
-  // Getters
-  List<Doctor> get doctors => _doctors;
-  bool get isLoading => _isLoading;
-  String get error => _error;
+  // Getters — screens read these values using context.watch<DoctorProvider>()
+  List<Doctor> get doctors   => _doctors;
+  bool get isLoading         => _isLoading;
+  String get error           => _error;
 
-  // Top 4 doctors by rating — used in HomeScreen
+  // topDoctors returns the top 4 doctors sorted by rating
+  // Used in HomeScreen to show the "Top Doctors" section
+  // The spread operator [..._doctors] creates a copy so the original list is not changed
   List<Doctor> get topDoctors {
     final sorted = [..._doctors]..sort((a, b) => b.rating.compareTo(a.rating));
-    return sorted.take(4).toList();
+    return sorted.take(4).toList(); // Only return the top 4
   }
 
-  // Load doctors — only fetches once unless forced
+  // loadDoctors fetches the doctors list from DoctorService
+  // The _loaded flag prevents unnecessary API calls when switching between screens
+  // For example: user goes Home → Doctors → Home — doctors only load ONCE
+  // force:true is used to force a reload when the user pulls to refresh
   Future<void> loadDoctors({bool force = false}) async {
-    if (_loaded && !force) return;
+    if (_loaded && !force) return; // Skip if already loaded and not forced
 
     _isLoading = true;
     _error = '';
-    notifyListeners();
+    notifyListeners(); // Tell HomeScreen and DoctorsScreen to show loading indicator
 
     try {
+      // DoctorService automatically picks API, external JSON, or local JSON
+      // depending on internet connectivity
       _doctors = await _doctorService.getDoctors();
-      _loaded = true;
+      _loaded = true; // Mark as loaded so we don't reload unnecessarily
     } catch (e) {
+      // If all data sources fail, store the error message
       _error = 'Failed to load doctors';
     }
 
     _isLoading = false;
-    notifyListeners();
+    notifyListeners(); // Tell all screens that doctors are ready — rebuild!
   }
 
-  // Search doctors by name, specialty or clinic
+  // search filters the doctors list based on the search query
+  // It checks if the query matches the doctor's name, specialty, or clinic
+  // Used in DoctorsScreen search bar — updates results as the user types
   List<Doctor> search(String query) {
-    if (query.isEmpty) return _doctors;
+    if (query.isEmpty) return _doctors; // Return all doctors if search is empty
     final q = query.toLowerCase();
     return _doctors.where((d) =>
     d.name.toLowerCase().contains(q) ||

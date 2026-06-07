@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import '../../data/models/appointment.dart';
 import '../../data/services/database_service.dart';
 
-// Studied topics: StatefulWidget, saving data (reads from SQLite)
+// AppointmentsScreen shows all the patient's appointments in 3 categories
+// It reads appointment data from the SQLite local database
+// This satisfies the requirement: "read data from a local data source"
+// SingleTickerProviderStateMixin is needed for the TabController animation
 class AppointmentsScreen extends StatefulWidget {
   const AppointmentsScreen({super.key});
 
@@ -12,30 +15,42 @@ class AppointmentsScreen extends StatefulWidget {
 
 class _AppointmentsScreenState extends State<AppointmentsScreen>
     with SingleTickerProviderStateMixin {
+  // DatabaseService handles all SQLite read/write operations
   final _dbService = DatabaseService();
-  List<Appointment> _all = [];
-  bool _isLoading = true;
+
+  List<Appointment> _all = []; // All appointments loaded from SQLite
+  bool _isLoading = true;       // True while loading from database
+
+  // TabController manages the 3 tabs — Upcoming, Done, Cancelled
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    // Create TabController with 3 tabs
     _tabController = TabController(length: 3, vsync: this);
+    // Load test data first, then load all appointments from SQLite
     _seedAndLoad();
   }
 
   @override
   void dispose() {
+    // Always dispose TabController to free memory when screen is closed
     _tabController.dispose();
     super.dispose();
   }
 
-  // Seed test data for demo purposes
+  // _seedAndLoad adds test appointments to the database for demo purposes
+  // It only adds them if they don't already exist (checks for 'test_1' ID)
+  // This ensures test data is only added ONCE on first launch
   Future<void> _seedAndLoad() async {
     final existing = await _dbService.getAllAppointments();
 
+    // Check if test data already exists by looking for 'test_1' ID
     final existingIds = existing.map((a) => a.id).toList();
     if (!existingIds.contains('test_1')) {
+      // Add 5 test appointments — 2 upcoming, 2 completed, 1 cancelled
+      // This fills all 3 tabs so the marker can see each category
       final testData = [
         Appointment(
           id: 'test_1',
@@ -89,33 +104,41 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
         ),
       ];
 
+      // Save each test appointment to SQLite
       for (final appt in testData) {
         await _dbService.insertAppointment(appt);
       }
     }
 
+    // Load all appointments from SQLite after seeding
     await _loadAppointments();
   }
 
+  // _loadAppointments reads ALL appointments from SQLite and updates the UI
   Future<void> _loadAppointments() async {
     final list = await _dbService.getAllAppointments();
-    if (!mounted) return;
+    if (!mounted) return; // Safety check — don't update if screen is closed
     setState(() {
       _all = list;
       _isLoading = false;
     });
   }
 
+  // _cancel updates the appointment status to cancelled in SQLite
+  // Uses copyWith to create a new Appointment with cancelled status
+  // Then reloads the list so the UI updates immediately
   Future<void> _cancel(Appointment a) async {
     await _dbService.updateAppointment(
         a.copyWith(status: AppointmentStatus.cancelled));
-    await _loadAppointments();
+    await _loadAppointments(); // Reload to reflect the change
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Appointment cancelled')),
     );
   }
 
+  // These getters filter _all into 3 separate lists based on status
+  // They are used to populate each tab
   List<Appointment> get _upcoming =>
       _all.where((a) => a.status == AppointmentStatus.upcoming).toList();
   List<Appointment> get _completed =>
@@ -131,7 +154,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
       backgroundColor: cs.background,
       body: Column(
         children: [
-          // Teal header
+          // TEAL GRADIENT HEADER — matches the same header style used in HomeScreen
           Container(
             width: double.infinity,
             padding: EdgeInsets.fromLTRB(
@@ -150,23 +173,30 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                     style: TextStyle(fontFamily: 'Poppins', fontSize: 22,
                         fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 4),
+                // Show total count of all appointments
                 Text('${_all.length} total appointments',
                     style: const TextStyle(fontFamily: 'Poppins', fontSize: 13,
                         color: Colors.white70)),
                 const SizedBox(height: 16),
-                // Stats row
+
+                // STATS ROW — shows count for each status category
                 Row(children: [
-                  _HeaderStat(label: 'Upcoming', value: _upcoming.length.toString(),
+                  _HeaderStat(label: 'Upcoming',
+                      value: _upcoming.length.toString(),
                       icon: Icons.access_time_rounded),
                   const SizedBox(width: 10),
-                  _HeaderStat(label: 'Completed', value: _completed.length.toString(),
+                  _HeaderStat(label: 'Completed',
+                      value: _completed.length.toString(),
                       icon: Icons.check_circle_outline_rounded),
                   const SizedBox(width: 10),
-                  _HeaderStat(label: 'Cancelled', value: _cancelled.length.toString(),
+                  _HeaderStat(label: 'Cancelled',
+                      value: _cancelled.length.toString(),
                       icon: Icons.cancel_outlined),
                 ]),
                 const SizedBox(height: 12),
-                // Tab bar
+
+                // TAB BAR — 3 tabs for Upcoming, Done, Cancelled
+                // The count in each tab updates automatically as appointments change
                 TabBar(
                   controller: _tabController,
                   labelStyle: const TextStyle(
@@ -188,24 +218,27 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
             ),
           ),
 
-          // Tab content
+          // TAB CONTENT — shows the list of appointments for each tab
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : TabBarView(
               controller: _tabController,
               children: [
+                // Upcoming tab — shows Cancel button on each card
                 _AppointmentList(
                   appointments: _upcoming,
                   onCancel: _cancel,
                   emptyMessage: 'No upcoming appointments',
                   emptyIcon: Icons.calendar_today_outlined,
                 ),
+                // Done tab — no Cancel button needed
                 _AppointmentList(
                   appointments: _completed,
                   emptyMessage: 'No completed appointments',
                   emptyIcon: Icons.check_circle_outline,
                 ),
+                // Cancelled tab — no Cancel button needed
                 _AppointmentList(
                   appointments: _cancelled,
                   emptyMessage: 'No cancelled appointments',
@@ -220,6 +253,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
   }
 }
 
+// _HeaderStat is a small stat card shown in the teal header
+// It displays an icon, a number and a label e.g. "2 Upcoming"
 class _HeaderStat extends StatelessWidget {
   final String label;
   final String value;
@@ -251,9 +286,11 @@ class _HeaderStat extends StatelessWidget {
   }
 }
 
+// _AppointmentList displays a scrollable list of appointment cards
+// If the list is empty it shows an icon and message instead
 class _AppointmentList extends StatelessWidget {
   final List<Appointment> appointments;
-  final void Function(Appointment)? onCancel;
+  final void Function(Appointment)? onCancel; // null for completed/cancelled tabs
   final String emptyMessage;
   final IconData emptyIcon;
 
@@ -268,6 +305,7 @@ class _AppointmentList extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
+    // Show empty state if no appointments in this category
     if (appointments.isEmpty) {
       return Center(
         child: Column(
@@ -283,6 +321,7 @@ class _AppointmentList extends StatelessWidget {
       );
     }
 
+    // Show scrollable list of appointment cards
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
       itemCount: appointments.length,
@@ -295,28 +334,32 @@ class _AppointmentList extends StatelessWidget {
   }
 }
 
+// _AppointmentCard displays a single appointment with doctor info and status
 class _AppointmentCard extends StatelessWidget {
   final Appointment appointment;
   final VoidCallback? onCancel;
 
   const _AppointmentCard({required this.appointment, this.onCancel});
 
+  // Returns the text color for the status badge based on appointment status
   Color _statusColor() {
     switch (appointment.status) {
-      case AppointmentStatus.upcoming:  return const Color(0xFF0D9488);
-      case AppointmentStatus.completed: return const Color(0xFF2E7D32);
-      case AppointmentStatus.cancelled: return const Color(0xFFC62828);
+      case AppointmentStatus.upcoming:  return const Color(0xFF0D9488); // Teal
+      case AppointmentStatus.completed: return const Color(0xFF2E7D32); // Green
+      case AppointmentStatus.cancelled: return const Color(0xFFC62828); // Red
     }
   }
 
+  // Returns the background color for the status badge
   Color _statusBg() {
     switch (appointment.status) {
-      case AppointmentStatus.upcoming:  return const Color(0xFFCCFBF1);
-      case AppointmentStatus.completed: return const Color(0xFFE8F5E9);
-      case AppointmentStatus.cancelled: return const Color(0xFFFFEBEE);
+      case AppointmentStatus.upcoming:  return const Color(0xFFCCFBF1); // Light teal
+      case AppointmentStatus.completed: return const Color(0xFFE8F5E9); // Light green
+      case AppointmentStatus.cancelled: return const Color(0xFFFFEBEE); // Light red
     }
   }
 
+  // Returns the text shown in the status badge
   String _statusLabel() {
     switch (appointment.status) {
       case AppointmentStatus.upcoming:  return 'Upcoming';
@@ -337,18 +380,19 @@ class _AppointmentCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Doctor info row
+          // TOP SECTION — doctor photo, name, specialty, clinic and status badge
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Avatar with initials fallback
+                // Doctor photo — shows initials if no photo URL
                 CircleAvatar(
                   radius: 28,
                   backgroundColor: const Color(0xFF0D9488).withOpacity(0.1),
                   backgroundImage: appointment.doctorPhotoUrl.isNotEmpty
                       ? NetworkImage(appointment.doctorPhotoUrl)
                       : null,
+                  // Show first letter of doctor's name if no photo
                   child: appointment.doctorPhotoUrl.isEmpty
                       ? Text(appointment.doctorName.substring(4, 5),
                       style: const TextStyle(fontFamily: 'Poppins',
@@ -376,6 +420,7 @@ class _AppointmentCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                // Status badge — color changes based on appointment status
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -390,7 +435,7 @@ class _AppointmentCard extends StatelessWidget {
             ),
           ),
 
-          // Date/time row
+          // BOTTOM SECTION — date, time and cancel button
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
@@ -416,6 +461,7 @@ class _AppointmentCard extends StatelessWidget {
                     style: TextStyle(fontFamily: 'Poppins', fontSize: 12,
                         color: cs.onSurface.withOpacity(0.6))),
                 const Spacer(),
+                // Cancel button — only shows on Upcoming tab
                 if (onCancel != null)
                   GestureDetector(
                     onTap: onCancel,
