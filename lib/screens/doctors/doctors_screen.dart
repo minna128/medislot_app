@@ -65,7 +65,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   }
 
   void _toggleSource() {
-    setState(() => _useExternalJson = !_useExternalJson);
+    _useExternalJson = !_useExternalJson;
     _loadDoctors();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(_useExternalJson
@@ -93,7 +93,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
               icon: Icon(
                   _useExternalJson ? Icons.cloud_outlined : Icons.storage_outlined,
                   size: 16),
-              label: Text(_useExternalJson ? 'GitHub JSON' : 'API',
+              label: Text(_useExternalJson ? 'External JSON' : 'Live API',
                   style: const TextStyle(fontFamily: 'Poppins', fontSize: 11)),
             ),
           ),

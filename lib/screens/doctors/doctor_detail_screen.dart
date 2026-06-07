@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../data/models/appointment.dart';
 import '../../data/models/doctor.dart';
+import '../../data/services/database_service.dart';
 import '../booking/booking_screen.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -14,6 +16,61 @@ class DoctorDetailScreen extends StatefulWidget {
 }
 
 class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
+  List<String> _getAvailableSlots() {
+    final availability = widget.doctor.experience.toLowerCase();
+
+    // Parse start and end hours from strings like "mon-fri 9am-5pm" or "tue-sun 9am-5pm"
+    final timeRegex = RegExp(r'(\d+)(?::(\d+))?(am|pm)\s*-\s*(\d+)(?::(\d+))?(am|pm)');
+    final match = timeRegex.firstMatch(availability);
+
+    if (match == null) return _timeSlots; // Return all if can't parse
+
+    int startHour = int.parse(match.group(1)!);
+    final startPeriod = match.group(3)!;
+    int endHour = int.parse(match.group(4)!);
+    final endPeriod = match.group(6)!;
+
+    // Convert to 24-hour
+    if (startPeriod == 'pm' && startHour != 12) startHour += 12;
+    if (startPeriod == 'am' && startHour == 12) startHour = 0;
+    if (endPeriod == 'pm' && endHour != 12) endHour += 12;
+    if (endPeriod == 'am' && endHour == 12) endHour = 0;
+
+    return _timeSlots.where((slot) {
+      final parts = slot.split(' ');
+      final timeParts = parts[0].split(':');
+      int hour = int.parse(timeParts[0]);
+      final isPM = parts[1] == 'PM';
+      if (isPM && hour != 12) hour += 12;
+      if (!isPM && hour == 12) hour = 0;
+      return hour >= startHour && hour < endHour;
+    }).toList();
+  }
+
+
+  List<String> _bookedSlots = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _getDistance();
+    _loadBookedSlots();
+  }
+
+  Future<void> _loadBookedSlots() async {
+    final db = DatabaseService();
+    final appointments = await db.getAllAppointments();
+    if (!mounted) return;
+    setState(() {
+      _bookedSlots = appointments
+          .where((a) =>
+      a.doctorName == widget.doctor.name &&
+          a.status == AppointmentStatus.upcoming)
+          .map((a) => a.time)
+          .toList();
+    });
+  }
+
   Future<void> _openInMaps() async {
     final coords = _findCoords(widget.doctor.clinic);
 
@@ -96,16 +153,12 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
   String? _selectedSlot;
 
   static const List<String> _timeSlots = [
-    '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
-    '11:00 AM', '11:30 AM', '02:00 PM', '02:30 PM',
-    '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM',
+    '08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM',
+    '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
+    '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM',
+    '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM',
+    '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM',
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    _getDistance();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -228,7 +281,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
 
                   GestureDetector(
                     onTap: () async {
-                      print('Tapped clinic!');
                       await _openInMaps();
                     },
                     child: Row(children: [
@@ -309,30 +361,42 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                       style: TextStyle(fontFamily: 'Poppins',
                           fontSize: 16, fontWeight: FontWeight.bold,
                           color: textColor)),
+                  const SizedBox(height: 6),
+                  if (doctor.experience.isNotEmpty)
+                    Text('Working hours: ${doctor.experience}',
+                        style: TextStyle(fontFamily: 'Poppins', fontSize: 12,
+                            color: const Color(0xFF0D9488))),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 10,
                     runSpacing: 10,
-                    children: _timeSlots.map((slot) {
+                    children: _getAvailableSlots().map((slot) {
                       final isSelected = _selectedSlot == slot;
+                      final isBooked = _bookedSlots.contains(slot);
                       return GestureDetector(
-                        onTap: () => setState(() => _selectedSlot = slot),
+                        onTap: isBooked ? null : () => setState(() => _selectedSlot = slot),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 10),
                           decoration: BoxDecoration(
-                            color: isSelected
+                            color: isBooked
+                                ? Colors.grey.withOpacity(0.1)
+                                : isSelected
                                 ? const Color(0xFF0D9488)
                                 : const Color(0xFF0D9488).withOpacity(0.08),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                                color: const Color(0xFF0D9488).withOpacity(
+                                color: isBooked
+                                    ? Colors.grey.withOpacity(0.3)
+                                    : const Color(0xFF0D9488).withOpacity(
                                     isSelected ? 1.0 : 0.3)),
                           ),
                           child: Text(slot,
                               style: TextStyle(fontFamily: 'Poppins',
                                   fontSize: 13, fontWeight: FontWeight.w500,
-                                  color: isSelected
+                                  color: isBooked
+                                      ? Colors.grey
+                                      : isSelected
                                       ? Colors.white
                                       : const Color(0xFF0D9488))),
                         ),
